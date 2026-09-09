@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>专业知识竞赛系统</title>
+<script src="js/xlsx.full.min.js"></script>
+<style>
+:root {
+    --bg: #1a1a2e;
+    --bg-accent: radial-gradient(circle at 20% 0%, rgba(0,229,255,0.14), transparent 28%), radial-gradient(circle at 85% 10%, rgba(255,215,0,0.12), transparent 30%), #121426;
+    --text: #fff;
+    --heading: #fff6c7;
+    --panel: rgba(255,255,255,0.04);
+    --panel-strong: rgba(255,255,255,0.075);
+    --panel-solid: #232542;
+    --field-bg: #2a2a4a;
+    --field-border: rgba(255,255,255,0.18);
+    --shadow: 0 14px 38px rgba(0,0,0,0.28);
+    --muted: #aaa;
+    --subtle: #888;
+    --placeholder: #555;
+    --gold: #ffd700;
+    --cyan: #00e5ff;
+    --green: #00c853;
+    --red: #ff1744;
+    --answer-bg: rgba(0,200,83,0.1);
+    --button-disabled: #444;
+    --button-disabled-text: #888;
+    --overlay-bg: rgba(0,0,0,0.92);
+}
+body.theme-light {
+    --bg: #f4f7fb;
+    --bg-accent: radial-gradient(circle at 20% 0%, rgba(0,124,145,0.12), transparent 30%), radial-gradient(circle at 85% 10%, rgba(184,135,0,0.14), transparent 32%), #f4f7fb;
+    --text: #172033;
+    --heading: #2b2412;
+    --panel: rgba(23,32,51,0.06);
+    --panel-strong: rgba(255,255,255,0.78);
+    --panel-solid: #ffffff;
+    --field-bg: #fff;
+    --field-border: #c7d0dd;
+    --shadow: 0 14px 36px rgba(43,55,78,0.14);
+    --muted: #4d5b70;
+    --subtle: #66758a;
+    --placeholder: #97a3b3;
+    --gold: #b88700;
+    --cyan: #007c91;
+    --green: #148443;
+    --red: #c62828;
+    --answer-bg: rgba(20,132,67,0.12);
+    --button-disabled: #d8dee8;
+    --button-disabled-text: #7c8798;
+    --overlay-bg: rgba(244,247,251,0.96);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-size: clamp(14px, 1.4vw, 32px); }
+body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    background: var(--bg-accent); color: var(--text);
+    height: 100vh; overflow: hidden;
+}
+.theme-toggle {
+    position: fixed; right: 0.8rem; bottom: 0.8rem; z-index: 10000;
+    padding: 0.42rem 0.9rem; border: 1px solid var(--field-border);
+    border-radius: 999px; background: var(--panel-solid); color: var(--text);
+    cursor: pointer; font-size: 0.78rem; font-weight: bold; box-shadow: var(--shadow);
+}
+
+/* ===== 配置页 ===== */
+#pageConfig {
+    max-width: 960px; margin: 0 auto; padding: 1.3rem 2rem 5.8rem;
+    height: 100vh; display: flex; flex-direction: column;
+    overflow-y: auto;
+}
+#pageConfig h1 { text-align: center; font-size: 1.8rem; color: var(--heading); margin-bottom: 1rem; }
+.cfg-section {
+    margin-bottom: 0.8rem; padding: 0.7rem 0.9rem;
+    border-left: 4px solid var(--gold); background: var(--panel);
+}
+.cfg-section h3 { font-size: 1rem; margin-bottom: 0.55rem; color: var(--heading); }
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.team-grid input, .award-grid input, #teamCount {
+    width: 100%; background: var(--field-bg); border: 1px solid var(--field-border); color: var(--text);
+    padding: 0.5rem 0.65rem; border-radius: 6px; font-size: 0.9rem; outline: none;
+}
+.team-grid input:focus, .award-grid input:focus, #teamCount:focus {
+    border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0,229,255,0.16);
+}
+.award-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 0.6rem; }
+.award-item {
+    background: var(--panel); border: 1px solid var(--field-border);
+    border-radius: 8px; padding: 0.65rem;
+}
+.award-item label { display: block; font-size: 0.9rem; color: var(--heading); margin-bottom: 0.35rem; font-weight: bold; }
+.inline-btn {
+    padding: 0.34rem 0.9rem; background: var(--cyan); color: #000;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
+}
+#btnStart {
+    display: block; position: fixed; left: 50%; bottom: 1rem; z-index: 10001;
+    transform: translateX(-50%);
+    margin: 0; padding: 0.85rem 3.4rem;
+    font-size: 1.2rem; font-weight: bold; border: none; border-radius: 10px;
+    background: var(--gold); color: #000; cursor: pointer; box-shadow: var(--shadow);
+}
+#btnStart:disabled { background: var(--button-disabled); color: var(--button-disabled-text); cursor: not-allowed; }
+
+/* ===== 竞赛页 ===== */
+#pageLive { display: none; height: 100vh; flex-direction: column; padding: 0.65rem 0.8rem; }
+
+/* 顶栏 */
+.top-bar {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1rem; padding: 0.45rem 0.7rem; flex-shrink: 0;
+    background: var(--panel); border: 1px solid var(--field-border); border-radius: 8px;
+}
+.top-bar h2 { font-size: 1.5rem; color: var(--heading); }
+.top-bar .stat { font-size: 0.95rem; color: var(--subtle); padding: 0.15rem 0.55rem; border: 1px solid var(--field-border); border-radius: 999px; }
+.nav-pills { display: flex; justify-content: center; gap: 0.55rem; padding: 0.55rem 0; flex-shrink: 0; }
+.nav-pills button {
+    padding: 0.42rem 1.15rem; border: 1px solid var(--field-border); background: var(--panel);
+    color: var(--muted); border-radius: 999px; font-size: 0.9rem; cursor: pointer; font-weight: bold;
+}
+.nav-pills button.active { border-color: var(--gold); color: #000; background: var(--gold); }
+
+/* 主体三栏 */
+.main-grid {
+    flex: 1; display: grid; grid-template-columns: minmax(112px, 0.72fr) minmax(0, 6.6fr) minmax(112px, 0.72fr);
+    gap: 0.55rem; overflow: hidden; min-height: 0;
+}
+
+/* 计分板 */
+.scoreboard {
+    display: flex; flex-direction: column; gap: 0.32rem;
+    overflow-y: auto; padding: 0.15rem;
+}
+.team-card {
+    display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); grid-template-areas: "rank name" "rank score" "adj adj";
+    align-items: center; gap: 0.08rem 0.28rem;
+    padding: 0.42rem 0.4rem; background: var(--panel-strong);
+    border-radius: 8px; border: 1px solid var(--field-border); border-left: 4px solid var(--field-border); text-align: left;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+.team-card.rank-1 { border-left-color: var(--gold); }
+.team-card.rank-2 { border-left-color: #9aa3ad; }
+.team-card.rank-3 { border-left-color: #b66f2d; }
+.team-card .t-rank {
+    grid-area: rank; font-size: 0.72rem; color: var(--gold); font-weight: bold;
+    align-self: stretch; display: flex; align-items: center; justify-content: center;
+}
+.team-card .t-name {
+    grid-area: name; font-size: 0.62rem; font-weight: bold;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%; line-height: 1.2;
+}
+.team-card .t-score {
+    grid-area: score; font-size: 1.08rem; font-weight: bold; color: var(--cyan);
+    line-height: 1.1;
+}
+.team-card .t-adj {
+    grid-area: adj; display: flex; gap: 0.22rem; margin-top: 0.2rem;
+}
+.team-card .t-adj button {
+    flex: 1; padding: 0.1rem 0.18rem; font-size: 0.58rem; border: none; border-radius: 5px;
+    cursor: pointer; color: #fff; font-weight: bold; line-height: 1.3;
+}
+.team-card .t-adj .plus { background: var(--green); }
+.team-card .t-adj .minus { background: var(--red); }
+
+/* 中间题目区 */
+.center-area {
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--panel-solid); border: 1px solid var(--field-border);
+    border-radius: 10px; box-shadow: var(--shadow);
+}
+.question-panel {
+    flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
+    padding: 1.25rem 1.6rem; overflow-y: auto;
+}
+.q-placeholder {
+    text-align: center; font-size: 1.55rem; color: var(--placeholder); margin-top: 28%;
+}
+.q-stem {
+    font-size: 2rem; font-weight: bold; line-height: 1.45;
+    margin-bottom: 1rem; flex-shrink: 0; color: var(--heading);
+}
+.q-options {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; flex-shrink: 0;
+}
+.q-options .opt {
+    font-size: 1.22rem; padding: 0.75rem 1rem; line-height: 1.4;
+    background: var(--panel); border: 1px solid var(--field-border); border-radius: 8px;
+    word-break: break-word;
+}
+.q-options .opt b { color: var(--gold); margin-right: 0.2rem; }
+.q-options.single-col { grid-template-columns: 1fr; }
+.answer-reveal {
+    padding: 0.9rem 1.5rem; margin: 0 1rem 0.7rem;
+    background: var(--answer-bg); border-left: 4px solid var(--green);
+    border-radius: 8px; display: none;
+}
+.answer-reveal.show { display: block; }
+.answer-reveal .label { color: var(--gold); font-size: 0.9rem; margin-bottom: 0.3rem; }
+.answer-reveal .content { font-size: 1.7rem; font-weight: bold; color: var(--text); }
+
+/* 控制栏 */
+.ctrl-bar {
+    display: flex; justify-content: center; align-items: center;
+    gap: 0.65rem; padding: 0.75rem 0.65rem; flex-shrink: 0;
+    border-top: 1px solid var(--field-border); background: var(--panel);
+}
+.ctrl-bar button {
+    padding: 0.65rem 1.35rem; border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: bold; cursor: pointer; min-width: 5.4rem;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.16);
+}
+.ctrl-bar .c-pick { background: var(--gold); color: #000; }
+.ctrl-bar .c-pick:disabled { background: var(--button-disabled); color: var(--button-disabled-text); cursor: not-allowed; }
+.ctrl-bar .c-ans { background: var(--cyan); color: #000; }
+.ctrl-bar .c-ans:disabled { background: var(--button-disabled); color: var(--button-disabled-text); cursor: not-allowed; }
+.ctrl-bar .c-ok { background: var(--green); color: #fff; }
+.ctrl-bar .c-ok:disabled { background: var(--button-disabled); color: var(--button-disabled-text); cursor: not-allowed; }
+.ctrl-bar .c-no, .ctrl-bar .c-finish { background: var(--red); color: #fff; }
+.ctrl-bar .c-no:disabled, .ctrl-bar .c-finish:disabled { background: var(--button-disabled); color: var(--button-disabled-text); cursor: not-allowed; }
+
+/* 顶栏工具按钮 */
+.top-tools {
+    position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+    display: flex; gap: 0.4rem;
+}
+.top-tools button {
+    padding: 0.35rem 0.85rem; border: 1px solid var(--field-border); background: var(--panel-solid);
+    color: var(--muted); border-radius: 6px; font-size: 0.72rem; cursor: pointer;
+}
+
+/* overlay */
+#overlay {
+    display: none; position: fixed; inset: 0;
+    background: var(--overlay-bg); z-index: 9999;
+    align-items: center; justify-content: center; flex-direction: column;
+}
+#overlayContent { text-align: center; padding: 2rem; max-height: 90vh; overflow-y: auto; width: min(1120px, 96vw); }
+.result-section-title { color: var(--gold); font-size: 1.4rem; margin: 1rem 0 0.6rem; }
+.award-result-grid { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 0.8rem; max-width: 1000px; margin: 0 auto; }
+.award-result-card { background: var(--panel-strong); border: 1px solid var(--field-border); border-radius: 8px; padding: 0.8rem; text-align: left; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.award-result-card h3 { color: var(--gold); font-size: 1rem; margin-bottom: 0.5rem; }
+.award-result-card p { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.4rem; }
+.rank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; max-width: 760px; margin: 0 auto; }
+.rank-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1.2rem; background: var(--panel-strong); border-radius: 8px; }
+.rank-no { font-size: 1.5rem; font-weight: bold; width: 2.5rem; }
+.rank-name { flex: 1; font-size: 1.05rem; font-weight: bold; text-align: left; }
+.rank-score { font-size: 1.5rem; font-weight: bold; color: var(--cyan); }
+.result-action { margin-top: 1.5rem; padding: 0.7rem 2.5rem; font-size: 1rem; font-weight:bold; background: var(--gold); color:#000; border:none; border-radius:8px; cursor:pointer; }
+.conflict-note { margin: 0.8rem auto; max-width: 760px; color: var(--red); font-weight: bold; }
+
+@media (max-width: 900px) {
+    html { font-size: 14px; }
+    .main-grid { grid-template-columns: minmax(0, 1fr); }
+    .scoreboard { display: grid; grid-template-columns: 1fr 1fr; }
+    .award-grid, .award-result-grid, .rank-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--field-border); border-radius: 10px; }
+
+/* 投影安全区：1920×1080 时四周 48px，关键信息远离模糊边缘。 */
+:root {
+    --projection-inset: clamp(20px, 2.5vw, 48px);
+    --heading: #fff9ed;
+    --muted: #bcc9dd;
+    --subtle: #b4c1d5;
+    --placeholder: #bcc9dd;
+    --panel: #182b47;
+    --panel-strong: #14263f;
+    --panel-solid: #10213a;
+    --field-bg: #0f213b;
+    --field-border: #425978;
+    --bg-accent: #09172b;
+    --answer-bg: #193b3b;
+    --gold: #edcd88;
+    --cyan: #b7d8ff;
+    --green: #a5e0c0;
+    --red: #ffa8a5;
+    --button-disabled: #23334b;
+    --button-disabled-text: #8798b0;
+    --accent-ink: #19243a;
+    --positive-panel: #193b32;
+    --negative-panel: #432c37;
+}
+body.theme-light {
+    --bg-accent: #eaf0f7;
+    --panel: #e7edf5;
+    --panel-strong: #ffffff;
+    --field-border: #8a9aaf;
+    --placeholder: #4d5b70;
+    --heading: #14233b;
+    --gold: #875f16;
+    --cyan: #244f82;
+    --green: #176441;
+    --red: #a03035;
+    --accent-ink: #ffffff;
+    --positive-panel: #e5f3e9;
+    --negative-panel: #f9e9e9;
+}
+#pageLive { padding: var(--projection-inset); gap: 10px; }
+.top-bar { min-height: 80px; padding: 10px 20px; justify-content: space-between; gap: 18px; border-width: 0; border-bottom: 2px solid var(--field-border); border-radius: 0; background: transparent; }
+.event-title { display: flex; align-items: center; gap: 16px; }
+.event-emblem { width: 48px; height: 48px; flex-shrink: 0; color: var(--gold); }
+.event-eyebrow { display: block; font-size: 17px; letter-spacing: 4px; font-weight: 700; color: var(--gold); margin-bottom: 2px; }
+.top-bar h2 { font-size: clamp(26px, 1.8vw, 36px); white-space: nowrap; }
+.top-bar .stat { font-size: 20px; color: var(--muted); margin-right: auto; }
+.top-tools { position: static; transform: none; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.top-tools button { font-size: 18px; font-weight: 700; padding: 8px 14px; border-width: 2px; color: var(--muted); border-radius: 8px; }
+#syncStatus { font-size: 15px; color: var(--muted); max-width: 210px; }
+#syncStatus.sync-failed { color: var(--gold); }
+.nav-pills { padding: 0; gap: 12px; }
+.nav-pills button { font-size: 22px; padding: 8px 30px; border: 0; border-radius: 8px; background: transparent; }
+.nav-pills button.active { background: var(--gold); color: var(--accent-ink); }
+.main-grid { grid-template-columns: minmax(180px, 1fr) minmax(0, 6fr) minmax(180px, 1fr); gap: 14px; }
+.scoreboard { padding: 0; gap: 10px; scrollbar-width: thin; }
+.scoreboard::before { content: '参赛队伍 / 积分'; flex-shrink: 0; font-size: 18px; font-weight: 700; letter-spacing: 2px; color: var(--muted); padding: 4px 8px 2px; }
+.team-card {
+    flex-shrink: 0; padding: 10px 12px; gap: 8px 6px;
+    grid-template-columns: 28px minmax(0, 1fr) 38px;
+    grid-template-areas: "rank name name" "score score adj";
+    border-width: 2px; border-left-width: 2px; border-radius: 12px; box-shadow: none;
+}
+.team-card .t-rank { font-size: 21px; align-self: center; line-height: 1.3; color: var(--gold); }
+.team-card .t-name { font-size: 24px; line-height: 1.3; white-space: nowrap; overflow-wrap: anywhere; }
+.team-card .t-score { font-size: 48px; line-height: 1.05; text-align: left; color: var(--heading); font-variant-numeric: tabular-nums; }
+.team-card .t-score::after { content: '分'; margin-left: 8px; font-size: 17px; font-weight: 500; color: var(--muted); }
+.team-card .t-adj { margin-top: 0; gap: 4px; flex-direction: column; }
+.team-card .t-adj button { font-size: 18px; padding: 0 6px; min-height: 25px; border: 1px solid var(--field-border); background: transparent; color: var(--muted); }
+.team-card .t-adj .plus, .team-card .t-adj .minus { background: transparent; color: var(--muted); }
+.team-card .t-adj .plus:hover { color: var(--green); border-color: var(--green); background: var(--positive-panel); }
+.team-card .t-adj .minus:hover { color: var(--red); border-color: var(--red); background: var(--negative-panel); }
+.team-card.score-changed { animation: score-emphasis 1.1s ease-out; }
+.team-card { cursor: pointer; }
+.team-card.is-selected { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); background: var(--panel); }
+.team-card:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
+#teamSelection { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0; }
+#teamSelection.has-team { color: var(--gold); }
+.action-notice { position: fixed; top: calc(var(--projection-inset) + 100px); left: 50%; transform: translateX(-50%); z-index: 11000; max-width: 80vw; padding: 12px 24px; border: 2px solid var(--gold); border-radius: 8px; background: var(--panel-solid); color: var(--heading); font-size: 24px; font-weight: 700; text-align: center; pointer-events: none; }
+.action-notice[hidden] { display: none; }
+@keyframes score-emphasis { 0%, 35% { border-color: var(--gold); background: var(--panel); } 100% { border-color: var(--field-border); } }
+.center-area { min-height: 0; border-width: 2px; border-radius: 16px; box-shadow: none; border-top: 4px solid var(--gold); }
+.question-meta { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 20px 30px 0; }
+.question-meta .section-caption { font-size: 19px; font-weight: 700; letter-spacing: 3px; color: var(--muted); margin-right: auto; }
+.question-meta .question-tag { font-size: 20px; font-weight: 700; padding: 5px 14px; border: 2px solid var(--field-border); border-radius: 6px; color: var(--gold); }
+.question-meta .value-tag { color: var(--heading); background: var(--panel); }
+.question-panel { min-height: 0; padding: 26px 30px; gap: 18px; overflow-wrap: anywhere; }
+.question-panel::-webkit-scrollbar, .answer-reveal::-webkit-scrollbar { width: 10px; }
+.q-placeholder { font-size: 38px; margin: auto; line-height: 1.5; text-align: center; }
+.q-placeholder::before { content: '准备就绪'; display: block; font-size: 22px; letter-spacing: 8px; color: var(--gold); margin-bottom: 18px; }
+.q-stem { font-size: clamp(34px, 2.3vw, 46px); line-height: 1.45; margin: 0; white-space: pre-wrap; }
+.q-options { gap: 14px; }
+.q-options .opt { display: flex; align-items: flex-start; gap: 18px; font-size: clamp(26px, 1.8vw, 36px); font-weight: 600; line-height: 1.4; padding: 18px 20px; border-width: 2px; border-radius: 10px; white-space: pre-wrap; }
+.q-options .opt b { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 46px; min-height: 46px; font-size: 28px; color: var(--gold); background: var(--panel-solid); border-radius: 6px; margin: 0; }
+.q-options .opt span { min-width: 0; }
+.answer-reveal { flex: 0 1 auto; min-height: 0; max-height: 38%; overflow-y: auto; margin: 0 24px 16px; padding: 14px 20px; border-left-width: 6px; }
+.answer-reveal .label { font-size: 21px; font-weight: 700; letter-spacing: 3px; color: var(--green); }
+.answer-reveal.show { animation: answer-enter 200ms ease-out; }
+@keyframes answer-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.answer-reveal .content { font-size: 36px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.center-area:has(.short-answer.show) { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+.center-area:has(.short-answer.show) .question-meta { grid-area: 1 / 1; }
+.center-area:has(.short-answer.show) .question-panel { grid-area: 2 / 1; overflow: hidden; }
+.center-area:has(.short-answer.show) .ctrl-bar { grid-area: 3 / 1; }
+.answer-reveal.short-answer { grid-area: 2 / 1; align-self: end; z-index: 1; min-height: 60%; max-height: calc(100% - 16px); overflow: hidden; }
+.answer-reveal.short-answer .content { font-size: 48px; line-height: 1.5; }
+.ctrl-bar { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px; border-top-width: 2px; background: var(--panel-solid); }
+.ctrl-bar button { flex: 1 1 auto; min-width: 0; padding: 12px 14px; font-size: 23px; box-shadow: none; border: 2px solid transparent; border-radius: 8px; transition: background-color 120ms, border-color 120ms; }
+.ctrl-bar .c-pick { background: var(--gold); color: var(--accent-ink); }
+.ctrl-bar .c-ans { background: var(--panel); color: var(--cyan); border-color: var(--cyan); }
+.ctrl-bar .c-ok { background: var(--positive-panel); color: var(--green); border-color: var(--green); }
+.ctrl-bar .c-no { background: var(--negative-panel); color: var(--red); border-color: var(--red); }
+.ctrl-bar .c-finish { background: var(--panel); color: var(--muted); border-color: var(--field-border); }
+.ctrl-bar button:disabled { background: var(--button-disabled); color: var(--button-disabled-text); border-color: transparent; cursor: not-allowed; }
+.ctrl-bar button:not(:disabled):hover { border-color: var(--heading); }
+.theme-toggle { position: static; font-size: 18px; padding: 8px 14px; border-radius: 6px; border-width: 2px; box-shadow: none; }
+body > .theme-toggle { position: fixed; right: var(--projection-inset); bottom: var(--projection-inset); }
+#overlay { padding: var(--projection-inset); background: var(--bg-accent); }
+#overlayContent { width: 100%; max-height: 100%; padding: 18px 24px; }
+.award-result-grid { max-width: none; gap: 16px; }
+.award-result-card { padding: 24px; border-width: 2px; border-top: 5px solid var(--gold); border-radius: 12px; box-shadow: none; font-size: 27px; overflow-wrap: anywhere; }
+.award-result-card:nth-child(2) { border-top-color: #b6c7df; }
+.award-result-card:nth-child(3) { border-top-color: #d5a17f; }
+.award-result-card:nth-child(4) { border-top-color: var(--field-border); }
+.award-result-card h3 { font-size: 30px; }
+.award-result-card p { font-size: 22px; }
+.rank-grid { max-width: none; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.rank-row { padding: 14px 18px; min-width: 0; }
+.rank-name { font-size: 26px; overflow-wrap: anywhere; }
+.rank-no, .rank-score { font-size: 32px; }
+.award-team { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--field-border); font-weight: 700; }
+.award-team:last-child { border: 0; }
+.award-team span { min-width: 0; }
+.award-team b { white-space: nowrap; color: var(--gold); font-variant-numeric: tabular-nums; }
+.award-team small { font-size: 18px; color: var(--muted); margin-left: 5px; }
+.ceremony-heading { margin: 4px 0 30px; }
+.ceremony-heading .event-eyebrow { font-size: 20px; letter-spacing: 8px; margin-bottom: 10px; }
+.ceremony-heading h2 { font-size: 54px; color: var(--heading); letter-spacing: 8px; }
+.ceremony-heading::after { content: ''; display: block; width: 100px; height: 4px; background: var(--gold); margin: 20px auto 0; }
+.all-ranks { margin-top: 24px; border-top: 2px solid var(--field-border); padding-top: 12px; }
+.all-ranks summary { color: var(--muted); font-size: 24px; font-weight: 700; padding: 12px; cursor: pointer; }
+.all-ranks .result-section-title { display: none; }
+.result-action { font-size: 23px; background: var(--panel); color: var(--muted); border: 2px solid var(--field-border); margin-top: 24px; }
+#pageConfig { max-width: 1100px; padding-top: var(--projection-inset); }
+#pageConfig h1 { color: var(--heading); font-size: 42px; letter-spacing: 3px; }
+.cfg-section { border: 2px solid var(--field-border); border-left: 4px solid var(--gold); border-radius: 12px; }
+#btnStart { color: var(--accent-ink); bottom: var(--projection-inset); }
+.inline-btn { background: var(--gold); color: var(--accent-ink); font-size: 18px; }
+input[type=file]::file-selector-button { background: var(--panel-solid); border: 2px solid var(--field-border); color: var(--text); border-radius: 6px; padding: 10px 18px; margin-right: 14px; font: inherit; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+    .answer-reveal.show, .team-card.score-changed { animation: none; }
+    .ctrl-bar button { transition: none; }
+}
+button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+@media (max-width: 1400px), (max-height: 900px) {
+    #pageLive { gap: 8px; }
+    .top-bar { min-height: 54px; }
+    .top-bar h2 { font-size: 26px; }
+    .event-eyebrow { font-size: 14px; }
+    .event-emblem { width: 36px; height: 36px; }
+    .top-bar .stat { font-size: 16px; }
+    .top-tools button, .theme-toggle { font-size: 15px; padding: 6px 9px; }
+    #syncStatus { font-size: 13px; }
+    .nav-pills button { font-size: 18px; padding: 6px 22px; }
+    .main-grid { grid-template-columns: minmax(150px, 1fr) minmax(0, 5fr) minmax(150px, 1fr); gap: 10px; }
+    .team-card { padding: 8px; }
+    .team-card .t-name, .team-card .t-rank { font-size: 20px; }
+    .team-card .t-score { font-size: 32px; }
+    .question-panel { padding: 18px 22px; }
+    .question-meta { padding: 12px 22px 0; }
+    .question-meta .question-tag { font-size: 17px; }
+    .q-stem { font-size: 32px; }
+    .q-options .opt { font-size: 25px; padding: 10px 12px; }
+    .answer-reveal .content { font-size: 28px; }
+    .answer-reveal.short-answer .content { font-size: 36px; }
+    .ctrl-bar button { font-size: 18px; padding: 10px; }
+}
+@media (max-width: 900px) {
+    #pageLive { overflow-y: auto; }
+    .top-bar { flex-wrap: wrap; }
+    .top-tools { width: 100%; justify-content: flex-start; }
+    .main-grid { display: flex; flex-direction: column; overflow: visible; }
+    .center-area { order: -1; min-height: 65vh; }
+    .scoreboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+    .nav-pills { flex-wrap: wrap; }
+    .nav-pills button { padding: 6px 12px; }
+    .award-result-grid, .rank-grid { grid-template-columns: 1fr 1fr; }
+    .scoreboard::before { grid-column: 1 / -1; }
+}
+
+/* 较多队伍改用单行比分，全部分数始终留在投影安全区内。 */
+@media (min-width: 901px) {
+    .scoreboard { overflow: hidden; }
+    .scores-compact .main-grid { grid-template-columns: 260px minmax(0, 1fr) 260px; }
+    .scores-compact .scoreboard { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 28px repeat(var(--score-rows), minmax(0, 1fr)); gap: 6px; }
+    .scores-compact .team-card { min-height: 0; padding: 2px 10px; gap: 2px 6px; grid-template-columns: 24px minmax(0, 1fr) 26px; grid-template-areas: "rank name name" "score score adj"; }
+    .scores-compact .team-card .t-rank { font-size: 20px; }
+    .scores-compact .team-card .t-name { font-size: 24px; white-space: nowrap; }
+    .scores-compact .team-card .t-score { font-size: 38px; white-space: nowrap; }
+    .scores-compact .team-card .t-score::after { display: none; }
+    .scores-compact .team-card .t-adj { gap: 2px; }
+    .scores-compact .team-card .t-adj button { font-size: 16px; min-height: 18px; height: 18px; line-height: 16px; padding: 0; }
+    .scores-dense .main-grid { grid-template-columns: 340px minmax(0, 1fr) 340px; }
+    .scores-dense .team-card { padding: 2px 8px; gap: 0 6px; grid-template-columns: 24px minmax(0, 1fr) max-content 26px; grid-template-areas: "rank name score adj"; }
+    .scores-dense .team-card .t-score { font-size: 32px; }
+}
+</style>
+</head>
+<body class="theme-dark">
+
+<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">白天模式</button>
+<div id="actionNotice" class="action-notice" role="status" aria-live="polite" hidden></div>
+
+<div id="pageConfig">
+    <h1>竞赛系统初始化</h1>
+    <div class="cfg-section">
+        <h3>① 题库导入 (.xlsx)</h3>
+        <input type="file" id="excelFile" accept=".xlsx" style="font-size:0.9rem;">
+    </div>
+    <div class="cfg-section">
+        <h3>② 队伍设置（初始 100 分）</h3>
+        <div style="margin-bottom:0.5rem;">
+            队伍数：<input type="number" id="teamCount" value="12" min="1" max="30" style="width:3rem;">
+            <button class="inline-btn" onclick="genTeams()">生成</button>
+        </div>
+        <div id="teamInputArea" class="team-grid"></div>
+    </div>
+    <div class="cfg-section">
+        <h3>③ 奖项设置</h3>
+        <div class="award-grid">
+            <div class="award-item">
+                <label for="awardFirst">一等奖</label>
+                <input type="number" id="awardFirst" value="1" min="0" max="30">
+            </div>
+            <div class="award-item">
+                <label for="awardSecond">二等奖</label>
+                <input type="number" id="awardSecond" value="2" min="0" max="30">
+            </div>
+            <div class="award-item">
+                <label for="awardThird">三等奖</label>
+                <input type="number" id="awardThird" value="3" min="0" max="30">
+            </div>
+            <div class="award-item">
+                <label for="awardExcellent">优秀奖</label>
+                <input type="number" id="awardExcellent" value="6" min="0" max="30">
+            </div>
+        </div>
+    </div>
+    <button id="btnStart" disabled onclick="goLive()">进入竞赛</button>
+</div>
+
+<div id="pageLive">
+    <div class="top-bar" style="position:relative;">
+        <div class="event-title">
+            <svg class="event-emblem" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M15 7h18v13c0 7-4 11-9 11s-9-4-9-11V7Z" stroke="currentColor" stroke-width="3"/><path d="M15 11H7v6c0 5 4 8 9 8m17-14h8v6c0 5-4 8-9 8M24 31v9m-9 1h18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            <div><span class="event-eyebrow">专业知识竞赛</span><h2 id="roundName">第一轮：必答题</h2></div>
+        </div>
+        <span class="stat" id="statInfo">已抽: 0</span>
+        <div class="top-tools">
+            <span id="syncStatus" role="status"></span>
+            <button id="fullscreenButton" onclick="toggleFullscreen()">全屏</button>
+            <button onclick="openAnswerView()">答案端</button>
+            <button onclick="resetBank()">重置题库</button>
+            <button onclick="endCompetition()" style="border-color:var(--red); color:var(--red);">结束</button>
+        </div>
+    </div>
+    <div class="nav-pills">
+        <button onclick="switchR('r1')" id="nav-r1">第一轮</button>
+        <button onclick="switchR('r2')" id="nav-r2">第二轮</button>
+        <button onclick="switchR('r3')" id="nav-r3">第三轮</button>
+        <button onclick="switchR('r4')" id="nav-r4">第四轮</button>
+    </div>
+    <div class="main-grid">
+        <div id="scoreLeft" class="scoreboard"></div>
+        <div class="center-area">
+            <div class="question-meta"><span id="teamSelection" class="section-caption">点击比分卡选择答题队伍</span><span id="questionType" class="question-tag">准备抽题</span><span id="questionValue" class="question-tag value-tag">—</span></div>
+            <div class="question-panel" id="questionPanel" tabindex="0" aria-label="当前题目，可滚动查看长题">
+                <div class="q-placeholder">点击下方按钮抽题</div>
+            </div>
+            <div class="answer-reveal" id="ansBox" tabindex="0" aria-label="正确答案，可滚动查看长答案">
+                <div class="label">正确答案</div>
+                <div class="content" id="ansContent"></div>
+            </div>
+            <div class="ctrl-bar" id="ctrlBar"></div>
+        </div>
+        <div id="scoreRight" class="scoreboard"></div>
+    </div>
+</div>
+
+<div id="overlay">
+    <div id="overlayContent"></div>
+</div>
+
+<script>
+let DB = { danxuan:[], panduan:[], duoxuan:[], jianda:[] };
+let TEAMS = [];
+let selectedTeamId = null;
+let actionNoticeTimer;
+let renderedScores = new Map();
+let USED_IDS = new Set();
+let curR = 'r1', curQ = null, hasShowAns = true;
+let AWARDS = { first: 1, second: 2, third: 3, excellent: 6 };
+let themeMode = 'dark';
+let isHostSession = false;
+let storageWarningShown = false;
+let hostToken = '';
+let pendingSync = null, syncPromise = null, syncTimer = null, resettingServer = false;
+let hostSuperseded = false;
+let syncRevision = 0;
+const syncSession = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+const STORAGE_KEY = 'quizState_v2';
+const DB_KEY = 'quizDB_v2';
+const THEME_KEY = 'quizTheme_v2';
+const SERVER_STATE_API = '/api/state';
+const AWARD_TIERS = [
+    { key: 'first', name: '一等奖' },
+    { key: 'second', name: '二等奖' },
+    { key: 'third', name: '三等奖' },
+    { key: 'excellent', name: '优秀奖' }
+];
+
+function applyTheme(mode) {
+    themeMode = mode === 'light' ? 'light' : 'dark';
+    document.body.classList.toggle('theme-light', themeMode === 'light');
+    document.body.classList.toggle('theme-dark', themeMode !== 'light');
+    document.getElementById('themeToggle').innerText = themeMode === 'light' ? '黑暗模式' : '白天模式';
+    try { localStorage.setItem(THEME_KEY, themeMode); } catch(e) {}
+}
+
+function toggleTheme() {
+    applyTheme(themeMode === 'light' ? 'dark' : 'light');
+    saveState();
+}
+
+async function toggleFullscreen() {
+    try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+    } catch (err) { alert('浏览器未能进入全屏，请按 F11 全屏投影。'); }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    document.getElementById('fullscreenButton').textContent = document.fullscreenElement ? '退出全屏' : '全屏';
+});
+
+function placeThemeToggle() {
+    const tools = document.querySelector('.top-tools');
+    if (tools) tools.appendChild(document.getElementById('themeToggle'));
+}
+
+function loadTheme() {
+    try { applyTheme(localStorage.getItem(THEME_KEY) || themeMode); } catch(e) { applyTheme(themeMode); }
+}
+
+function warnStorage() {
+    if (storageWarningShown) return;
+    storageWarningShown = true;
+    alert('本地保存失败（可能是存储空间不足或浏览器限制）。比赛可继续，但请勿刷新或关闭主页面，以免丢失题库或比赛记录。');
+}
+
+function saveDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e) { warnStorage(); } }
+function saveState() {
+    renderQuestionMeta();
+    if (hostSuperseded) return;
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            version: 2, isLive: document.getElementById('pageLive').style.display === 'flex',
+            TEAMS, USED_IDS: [...USED_IDS], curR, hasShowAns, curQ, AWARDS, themeMode
+        }));
+    } catch(e) { warnStorage(); }
+    syncServerState();
+}
+
+function serverSyncAvailable() {
+    return isHostSession && (location.protocol === 'http:' || location.protocol === 'https:');
+}
+
+function getQuestionType(q) {
+    if (!q) return '';
+    const t = q._t || '';
+    if (t === 'dan') return '单选题';
+    if (t === 'duo') return '多选题';
+    if (t === 'pan') return '判断题';
+    if (t === 'jian') return '简答题';
+    if (q.A) return '选择题';
+    return '简答题';
+}
+
+function buildServerState() {
+    const options = curQ ? ['A','B','C','D','E'].filter(k => curQ[k]).map(k => ({key:k, text:String(curQ[k])})) : [];
+    return {
+        isLive: document.getElementById('pageLive').style.display === 'flex',
+        round: curR,
+        roundName: ROUND_NAMES[curR] || '',
+        usedCount: USED_IDS.size,
+        hasQuestion: !!curQ,
+        hasShowAns,
+        question: curQ ? {
+            type: getQuestionType(curQ),
+            stem: String(curQ.题干 || curQ.question || ''),
+            options,
+            answer: String(curQ.答案 || curQ.answer || ''),
+            value: curQ._val || parseInt(curQ.分值) || 10
+        } : null,
+        teams: TEAMS.map(t => ({id:t.id, name:t.name, score:t.score})),
+        updatedAt: new Date().toISOString()
+    };
+}
+
+async function requestWithTimeout(url, options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    try { return await fetch(url, {...options, signal: controller.signal}); }
+    finally { clearTimeout(timer); }
+}
+
+async function getHostToken() {
+    if (hostToken) return hostToken;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const supplied = params.get('host');
+    if (supplied) {
+        hostToken = supplied;
+        try { sessionStorage.setItem('quizHostToken', hostToken); } catch(e) {}
+        params.delete('host');
+        history.replaceState(null, '', location.pathname + location.search + (params.toString() ? '#' + params : ''));
+        return hostToken;
+    }
+    const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    if (!isLocal) {
+        try { hostToken = sessionStorage.getItem('quizHostToken') || ''; } catch(e) {}
+        if (!hostToken) throw new Error('请使用服务启动时显示的主控完整链接');
+        return hostToken;
+    }
+    const res = await requestWithTimeout('/api/host', {cache: 'no-store'});
+    if (!res.ok) throw new Error('主控连接失败');
+    hostToken = (await res.json()).token;
+    return hostToken;
+}
+
+function setSyncStatus(text, failed = false) {
+    const el = document.getElementById('syncStatus');
+    el.textContent = text;
+    el.classList.toggle('sync-failed', failed);
+}
+
+function syncServerState() {
+    if (!serverSyncAvailable() || resettingServer || hostSuperseded) return;
+    pendingSync = {...buildServerState(), syncSession, syncRevision: ++syncRevision};
+    clearTimeout(syncTimer);
+    if (syncPromise) return;
+    syncPromise = flushServerState().finally(() => {
+        syncPromise = null;
+        if (!resettingServer && !hostSuperseded) syncTimer = setTimeout(syncServerState, pendingSync ? 2000 : 5000);
+    });
+}
+
+async function flushServerState() {
+    try {
+        const token = await getHostToken();
+        while (pendingSync && !resettingServer) {
+            const snapshot = pendingSync;
+            pendingSync = null;
+            const res = await requestWithTimeout(SERVER_STATE_API, {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'X-Host-Token': token},
+                body: JSON.stringify(snapshot)
+            });
+            if (!res.ok) {
+                if (res.status === 409 && (await res.json()).code === 'HOST_REPLACED') {
+                    hostSuperseded = true;
+                    pendingSync = null;
+                    setSyncStatus('另一主控已接管，请关闭本页', true);
+                    return;
+                }
+                if (res.status === 403) hostToken = '';
+                if (!pendingSync) pendingSync = snapshot;
+                throw new Error(res.status === 403 ? '请重新打开主控链接' : '同步失败，将重试');
+            }
+        }
+        setSyncStatus('已同步');
+    } catch (err) {
+        setSyncStatus(err.message === '请重新打开主控链接' || err.message === '请使用服务启动时显示的主控完整链接' ? err.message : '连接中断，正在重试', true);
+    }
+}
+
+async function resetServerState() {
+    if (!serverSyncAvailable()) return;
+    if (hostSuperseded) throw new Error('另一主控已接管，请在最新主控页面清空');
+    resettingServer = true;
+    pendingSync = null;
+    clearTimeout(syncTimer);
+    try {
+        await syncPromise;
+        const token = await getHostToken();
+        const res = await requestWithTimeout('/api/reset', {method: 'POST', headers: {'X-Host-Token': token, 'X-Host-Session': syncSession}});
+        if (!res.ok) {
+            if (res.status === 403) hostToken = '';
+            if (res.status === 409) {
+                hostSuperseded = true;
+                setSyncStatus('另一主控已接管，请关闭本页', true);
+            }
+            throw new Error('服务器清空失败，请检查连接后重试');
+        }
+    } catch (err) {
+        // 结果不确定时保持暂停，重试清空，避免把旧数据重新上传。
+        if (!hostSuperseded) setSyncStatus('清空未确认，请重试', true);
+        throw err;
+    }
+}
+
+function openAnswerView() {
+    if (!serverSyncAvailable()) {
+        alert('请先通过服务端地址打开主页面，例如：http://本机IP:8123/竞赛抽题系统.html');
+        return;
+    }
+    window.open('/answer.html', '_blank');
+}
+
+function loadState() {
+    try {
+        const rawDB = localStorage.getItem(DB_KEY);
+        if (rawDB) {
+            const restored = JSON.parse(rawDB);
+            for (const key of Object.keys(DB)) DB[key] = Array.isArray(restored[key]) ? restored[key] : [];
+            document.getElementById('btnStart').disabled = !Object.values(DB).some(rows => rows.length);
+        }
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return !!rawDB;
+        const s = JSON.parse(raw);
+        if (s.version !== 2) return false;
+        if (s.TEAMS) TEAMS = s.TEAMS;
+        if (s.USED_IDS) USED_IDS = new Set(s.USED_IDS);
+        if (s.curR) curR = s.curR;
+        if (s.AWARDS) AWARDS = {...AWARDS, ...s.AWARDS};
+        if (s.themeMode) applyTheme(s.themeMode);
+        hasShowAns = s.hasShowAns !== false;
+        curQ = s.curQ || null;
+        if (s.isLive) {
+            isHostSession = true;
+            document.getElementById('pageConfig').style.display = 'none';
+            document.getElementById('pageLive').style.display = 'flex';
+            placeThemeToggle();
+            updateRoundUI();
+            refreshControls();
+            renderRank();
+            if (curQ && !hasShowAns) {
+                renderQ(curQ);
+                document.getElementById('bAns').disabled = false;
+            }
+            if (curQ && hasShowAns) {
+                renderQ(curQ);
+                document.getElementById('ansBox').classList.add('show');
+                document.getElementById('bAns').disabled = true;
+                document.getElementById('bOk').disabled = false;
+                document.getElementById('bNo').disabled = false;
+            }
+            document.getElementById('statInfo').innerText = '已抽: ' + USED_IDS.size;
+            syncServerState();
+        } else {
+            document.getElementById('btnStart').disabled = (DB.danxuan.length + DB.panduan.length + DB.duoxuan.length + DB.jianda.length) === 0;
+        }
+        hydrateAwardInputs();
+        return true;
+    } catch(e) { return false; }
+}
+
+async function clearData() {
+    if (confirm('确认清空所有数据？')) {
+        isHostSession = true;
+        try {
+            await resetServerState();
+            localStorage.removeItem(DB_KEY);
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        } catch (err) { alert('未清空本地数据。' + err.message); }
+    }
+}
+
+function genTeams() {
+    const area = document.getElementById('teamInputArea');
+    area.innerHTML = '';
+    const count = parseInt(document.getElementById('teamCount').value);
+    for (let i = 1; i <= count; i++) {
+        area.innerHTML += `<input type="text" value="${i}号参赛队" class="t-name-in">`;
+    }
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function readAwards() {
+    const read = id => Math.max(0, parseInt(document.getElementById(id).value) || 0);
+    AWARDS = {
+        first: read('awardFirst'),
+        second: read('awardSecond'),
+        third: read('awardThird'),
+        excellent: read('awardExcellent')
+    };
+    return AWARDS;
+}
+
+function hydrateAwardInputs() {
+    const map = { awardFirst:'first', awardSecond:'second', awardThird:'third', awardExcellent:'excellent' };
+    Object.entries(map).forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = AWARDS[key] || 0;
+    });
+}
+
+document.getElementById('excelFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+            const sheets = {danxuan:'单选', panduan:'判断', duoxuan:'多选', jianda:'简答'};
+            const nextDB = {};
+            let hasData = false;
+            for (const [key, name] of Object.entries(sheets)) {
+                const s = wb.Sheets[name];
+                if (!s) { nextDB[key] = []; continue; }
+                nextDB[key] = XLSX.utils.sheet_to_json(s, {raw:false});
+                if (nextDB[key].length > 0) hasData = true;
+            }
+            if (!hasData) { alert('题库为空，请检查 sheet 名称（单选、判断、多选、简答）'); return; }
+            DB = nextDB;
+            document.getElementById('btnStart').disabled = false;
+            saveDB(); saveState();
+        } catch(err) { alert('读取失败：' + err.message); }
+    };
+    reader.onerror = () => alert('文件读取失败，请重新选择题库文件。');
+    reader.readAsArrayBuffer(file);
+});
+
+function goLive() {
+    TEAMS = Array.from(document.querySelectorAll('.t-name-in')).map((el, i) => ({id:i, name:el.value, score:100}));
+    readAwards();
+    const awardTotal = Object.values(AWARDS).reduce((sum, n) => sum + n, 0);
+    if (awardTotal > TEAMS.length) {
+        alert('奖项总数不能超过队伍数，请调整奖项数量。');
+        return;
+    }
+    isHostSession = true;
+    document.getElementById('pageConfig').style.display = 'none';
+    document.getElementById('pageLive').style.display = 'flex';
+    placeThemeToggle();
+    switchR('r1');
+    renderRank();
+    saveState();
+}
+
+const ROUND_NAMES = {r1:'第一轮：必答题', r2:'第二轮：抢答题', r3:'第三轮：选答题', r4:'第四轮：加试题'};
+
+function updateRoundUI() {
+    document.getElementById('roundName').innerText = ROUND_NAMES[curR];
+    document.querySelectorAll('.nav-pills button').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('nav-' + curR);
+    if (btn) btn.classList.add('active');
+}
+
+function switchR(r) {
+    selectedTeamId = null;
+    curR = r; hasShowAns = true; curQ = null;
+    updateRoundUI();
+    refreshControls();
+    saveState();
+}
+
+function refreshControls() {
+    renderQuestionMeta();
+    const bar = document.getElementById('ctrlBar');
+    const lock = !hasShowAns ? 'disabled' : '';
+    let picks = '';
+    if (curR === 'r3') {
+        picks = `<button class="c-pick" onclick="pickR3(10)" ${lock}>抽10分</button>
+                 <button class="c-pick" onclick="pickR3(20)" ${lock}>抽20分</button>
+                 <button class="c-pick" onclick="pickR3(30)" ${lock}>抽30分</button>
+                 <button class="c-finish" onclick="finishRound3()" ${lock}>第三轮结束</button>`;
+    } else {
+        picks = `<button class="c-pick" onclick="pickNormal()" ${lock}>随机抽题</button>`;
+    }
+    bar.innerHTML = picks + `
+        <button class="c-ans" id="bAns" onclick="showAns()" disabled>显示答案</button>
+        <button class="c-ok" id="bOk" onclick="judge(true)" disabled>正确</button>
+        <button class="c-no" id="bNo" onclick="judge(false)" disabled>错误</button>
+    `;
+    if (hasShowAns && !curQ) {
+        document.getElementById('questionPanel').innerHTML = '<div class="q-placeholder">点击下方按钮抽题</div>';
+        document.getElementById('ansBox').classList.remove('show');
+    }
+}
+
+function doPick(pool, defT='') {
+    const qkey = q => (q._t||defT) + '_' + (q.题干||q.question||JSON.stringify(q));
+    const avail = pool.filter(q => !USED_IDS.has(qkey(q)));
+    if (avail.length === 0) { alert('此题库已抽完！'); return; }
+    selectedTeamId = null;
+    curQ = avail[Math.floor(Math.random() * avail.length)];
+    if (defT && !curQ._t) curQ = {...curQ, _t: defT};
+    USED_IDS.add(qkey(curQ));
+    hasShowAns = false;
+    renderQ(curQ);
+    refreshControls();
+    document.getElementById('bAns').disabled = false;
+    document.getElementById('statInfo').innerText = '已抽: ' + USED_IDS.size;
+    saveState();
+}
+
+function pickNormal() {
+    let p = [], t = '';
+    if (curR === 'r1') { p = DB.danxuan; t = 'dan'; }
+    if (curR === 'r2') { p = [...DB.duoxuan.map(q=>({...q,_t:'duo'})), ...DB.panduan.map(q=>({...q,_t:'pan'}))]; }
+    if (curR === 'r4') { p = DB.jianda; t = 'jian'; }
+    doPick(p, t);
+    if (curQ) { curQ._val = 10; saveState(); }
+}
+
+function pickR3(s) {
+    let p = (s===10)
+        ? [...DB.jianda.filter(q=>parseInt(q.分值)===10).map(q=>({...q,_t:'jian'})), ...DB.duoxuan.map(q=>({...q,_t:'duo'}))]
+        : DB.jianda.filter(q=>parseInt(q.分值)===s).map(q=>({...q,_t:'jian'}));
+    doPick(p);
+    if (curQ) { curQ._val = s; saveState(); }
+}
+
+function renderQ(q) {
+    let h = `<div class="q-stem">${esc(q.题干 || q.question)}</div>`;
+    if (q.A) {
+        const opts = ['A','B','C','D','E'].filter(o => q[o]);
+        const maxLen = Math.max(...opts.map(o => (q[o]||'').length));
+        const colClass = maxLen > 20 ? 'q-options single-col' : 'q-options';
+        h += `<div class="${colClass}">`;
+        opts.forEach(o => { h += `<div class="opt"><b>${o}</b><span>${esc(q[o])}</span></div>`; });
+        h += '</div>';
+    }
+    document.getElementById('questionPanel').innerHTML = h;
+    document.getElementById('ansContent').innerText = q.答案 || q.answer || '';
+    document.getElementById('ansBox').classList.remove('show');
+}
+
+function renderQuestionMeta() {
+    document.getElementById('ansBox').classList.toggle('short-answer', !!curQ && getQuestionType(curQ) === '简答题');
+    document.getElementById('ansBox').setAttribute('aria-label', curQ && getQuestionType(curQ) === '简答题' ? '正确答案' : '正确答案，可滚动查看长答案');
+    document.getElementById('questionType').textContent = curQ ? getQuestionType(curQ) : '准备抽题';
+    document.getElementById('questionValue').textContent = curQ ? (curQ._val || parseInt(curQ.分值) || 10) + ' 分' : '—';
+    updateTeamSelection();
+}
+
+function showActionNotice(message) {
+    const notice = document.getElementById('actionNotice');
+    notice.textContent = message;
+    notice.hidden = false;
+    clearTimeout(actionNoticeTimer);
+    actionNoticeTimer = setTimeout(() => { notice.hidden = true; }, 2400);
+}
+
+function selectTeam(id) {
+    if (hostSuperseded) return;
+    if (!TEAMS.some(t => t.id === id)) return;
+    selectedTeamId = selectedTeamId === id ? null : id;
+    updateTeamSelection();
+}
+
+function teamCardKeydown(event, id) {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectTeam(id);
+    }
+}
+
+function updateTeamSelection() {
+    const team = TEAMS.find(t => t.id === selectedTeamId);
+    document.querySelectorAll('[data-team-id]').forEach(card => {
+        const selected = Number(card.dataset.teamId) === selectedTeamId;
+        card.classList.toggle('is-selected', selected);
+        card.setAttribute('aria-current', selected ? 'true' : 'false');
+    });
+    const label = document.getElementById('teamSelection');
+    label.textContent = team ? '答题队伍：' + (team.id + 1) + '号 · ' + team.name : '点击比分卡选择答题队伍';
+    label.classList.toggle('has-team', !!team);
+    const ok = document.getElementById('bOk'), no = document.getElementById('bNo');
+    if (ok) ok.textContent = '正确 +' + (curQ ? (curQ._val || 10) : 10);
+    if (no) no.textContent = (curR === 'r2' || curR === 'r4') ? '错误 -10' : '错误 不扣分';
+}
+
+// 答案从下方向上覆盖题干；只有超长答案才适当缩字，保证无需滚动。
+function fitShortAnswer() {
+    const box = document.getElementById('ansBox');
+    const content = document.getElementById('ansContent');
+    content.style.fontSize = '';
+    if (!box.matches('.short-answer.show')) return;
+    let size = parseFloat(getComputedStyle(content).fontSize);
+    while (box.scrollHeight > box.clientHeight + 1 && size > 12) {
+        size -= 1;
+        content.style.fontSize = size + 'px';
+    }
+}
+
+if (typeof ResizeObserver !== 'undefined') {
+    let answerFitFrame;
+    const answerObserver = new ResizeObserver(() => {
+        cancelAnimationFrame(answerFitFrame);
+        answerFitFrame = requestAnimationFrame(fitShortAnswer);
+    });
+    answerObserver.observe(document.getElementById('ansBox'));
+    answerObserver.observe(document.getElementById('ansContent'));
+}
+
+function showAns() {
+    document.getElementById('ansBox').classList.add('show');
+    hasShowAns = true;
+    refreshControls();
+    document.getElementById('bOk').disabled = false;
+    document.getElementById('bNo').disabled = false;
+    saveState();
+}
+
+function judge(isOk) {
+    if (hostSuperseded || !curQ || !hasShowAns) return;
+    const penalty = curR === 'r2' || curR === 'r4';
+    const team = TEAMS.find(t => t.id === selectedTeamId);
+    if ((isOk || penalty) && !team) {
+        showActionNotice('请先点击答题队伍');
+        return;
+    }
+    const pts = curQ._val || 10;
+    if (isOk) { team.score += pts; showActionNotice(team.name + ' +' + pts + ' 分'); }
+    else if (penalty) { team.score -= 10; showActionNotice(team.name + ' -10 分'); }
+    else { showActionNotice('回答错误，本题不扣分'); }
+    selectedTeamId = null;
+    renderRank();
+    curQ = null;
+    refreshControls();
+    saveState();
+}
+
+function renderRank() {
+    document.getElementById('pageLive').classList.toggle('scores-compact', TEAMS.length > 12);
+    document.getElementById('pageLive').classList.toggle('scores-dense', TEAMS.length > 18);
+    document.documentElement.style.setProperty('--score-rows', Math.max(1, Math.ceil(TEAMS.length / 2)));
+    const changedIds = new Set(TEAMS.filter(t => renderedScores.has(t.id) && renderedScores.get(t.id) !== t.score).map(t => t.id));
+    renderedScores = new Map(TEAMS.map(t => [t.id, t.score]));
+    const mid = Math.ceil(TEAMS.length / 2);
+    const left = TEAMS.slice(0, mid);
+    const right = TEAMS.slice(mid);
+    const build = (list) => list.map(t => `
+        <div class="team-card${changedIds.has(t.id) ? ' score-changed' : ''}" data-team-id="${t.id}" role="group" aria-label="${esc(t.name)}，点击选择答题队伍" tabindex="0" onclick="selectTeam(${t.id})" onkeydown="teamCardKeydown(event,${t.id})">
+            <span class="t-rank">${t.id + 1}</span>
+            <span class="t-name" title="${esc(t.name)}">${esc(t.name)}</span>
+            <span class="t-score">${t.score}</span>
+            <span class="t-adj">
+                <button class="plus" aria-label="${esc(t.name)}加10分" onclick="event.stopPropagation();adj(${t.id},10)">+</button>
+                <button class="minus" aria-label="${esc(t.name)}减10分" onclick="event.stopPropagation();adj(${t.id},-10)">&minus;</button>
+            </span>
+        </div>
+    `).join('');
+    document.getElementById('scoreLeft').innerHTML = build(left);
+    document.getElementById('scoreRight').innerHTML = build(right);
+    updateTeamSelection();
+}
+
+function adj(id, d) {
+    const t = TEAMS.find(x => x.id === id);
+    if (t) { t.score += d; renderRank(); saveState(); }
+}
+
+function resetBank() {
+    if (confirm('确认清除抽题记录？')) {
+        USED_IDS.clear(); hasShowAns = true; curQ = null;
+        document.getElementById('ansBox').classList.remove('show');
+        switchR(curR);
+        document.getElementById('statInfo').innerText = '已抽: 0';
+        saveState();
+    }
+}
+
+function getRankRows() {
+    const sorted = [...TEAMS].sort((a,b) => b.score - a.score || a.id - b.id);
+    let rank = 1;
+    return sorted.map((team, i) => {
+        if (i > 0 && team.score < sorted[i - 1].score) rank = i + 1;
+        return {...team, rank};
+    });
+}
+
+function getScoreGroups() {
+    const rows = getRankRows();
+    const groups = [];
+    rows.forEach(row => {
+        const last = groups[groups.length - 1];
+        if (last && last.score === row.score) last.teams.push(row);
+        else groups.push({score: row.score, teams: [row]});
+    });
+    return groups;
+}
+
+function analyzeAwards() {
+    const groups = getScoreGroups();
+    const assignments = {};
+    AWARD_TIERS.forEach(tier => assignments[tier.key] = []);
+    let groupIndex = 0;
+
+    for (const tier of AWARD_TIERS) {
+        let remaining = AWARDS[tier.key] || 0;
+        while (remaining > 0 && groupIndex < groups.length) {
+            const group = groups[groupIndex];
+            if (group.teams.length > remaining) {
+                return {
+                    needsOvertime: true,
+                    assignments,
+                    conflictTier: tier,
+                    conflictQuota: remaining,
+                    conflictGroup: group
+                };
+            }
+            assignments[tier.key].push(...group.teams);
+            remaining -= group.teams.length;
+            groupIndex++;
+        }
+    }
+
+    return { needsOvertime: false, assignments };
+}
+
+function finishRound3() {
+    if (curR !== 'r3') {
+        alert('请先切换到第三轮。');
+        return;
+    }
+    const result = analyzeAwards();
+    if (!result.needsOvertime) {
+        alert('奖项名额已刚好对应，无需进入第四轮加试。');
+        endCompetition(false);
+        return;
+    }
+    const names = result.conflictGroup.teams.map(t => t.name).join('、');
+    alert(`${result.conflictTier.name}剩余名额 ${result.conflictQuota} 个，${result.conflictGroup.score} 分并列 ${result.conflictGroup.teams.length} 队：${names}。进入第四轮加试。`);
+    switchR('r4');
+}
+
+function buildAwardHtml(analysis) {
+    let html = '<div class="result-section-title">奖项排名</div>';
+    if (analysis.needsOvertime) {
+        html += `<div class="conflict-note">${esc(analysis.conflictTier.name)}仍有并列队伍未决：${esc(analysis.conflictGroup.teams.map(t => t.name).join('、'))}</div>`;
+    }
+    html += '<div class="award-result-grid">';
+    AWARD_TIERS.forEach(tier => {
+        const teams = analysis.assignments[tier.key] || [];
+        const quota = AWARDS[tier.key] || 0;
+        html += `<div class="award-result-card">
+            <h3>${tier.name}</h3>
+            <p>名额：${quota} 个</p>`;
+        if (teams.length) {
+            html += teams.map(t => `<div class="award-team"><span>${esc(t.name)}</span><b>${t.score}<small>分</small></b></div>`).join('');
+        } else {
+            html += '<div>暂无</div>';
+        }
+        html += '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function buildRankHtml() {
+    const rows = getRankRows();
+    let html = '<div class="result-section-title">全部队伍排名</div>';
+    html += '<div class="rank-grid">';
+    rows.forEach(t => {
+        const colors = {1:'var(--gold)', 2:'#9aa3ad', 3:'#b66f2d'};
+        const c = colors[t.rank] || 'var(--text)';
+        html += `<div class="rank-row">
+            <span class="rank-no" style="color:${c};">#${t.rank}</span>
+            <span class="rank-name">${esc(t.name)}</span>
+            <span class="rank-score">${t.score}</span>
+        </div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
+function endCompetition(needConfirm = true) {
+    if (needConfirm && !confirm('确认结束比赛？')) return;
+    const analysis = analyzeAwards();
+    let html = '<div class="ceremony-heading"><span class="event-eyebrow">专业知识竞赛</span><h2>荣誉榜</h2></div>';
+    html += buildAwardHtml(analysis);
+    html += '<details class="all-ranks"><summary>查看全部队伍排名</summary>' + buildRankHtml() + '</details>';
+    html += '<button class="result-action" onclick="clearData()">确认并清除数据</button>';
+    document.getElementById('overlayContent').innerHTML = html;
+    document.getElementById('overlay').style.display = 'flex';
+}
+
+genTeams();
+hydrateAwardInputs();
+loadTheme();
+loadState();
+</script>
+</body>
+</html>

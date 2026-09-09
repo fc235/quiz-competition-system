@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>竞赛答案端</title>
+<style>
+:root {
+    --bg: #f4f7fb;
+    --text: #172033;
+    --muted: #66758a;
+    --panel: #ffffff;
+    --line: #d8e0eb;
+    --gold: #b88700;
+    --cyan: #007c91;
+    --green: #148443;
+    --red: #c62828;
+    --shadow: 0 18px 45px rgba(43,55,78,0.14);
+}
+* { box-sizing: border-box; }
+html { font-size: clamp(15px, 2.5vw, 22px); }
+body {
+    margin: 0; min-height: 100vh;
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: radial-gradient(circle at 15% 0%, rgba(0,124,145,0.12), transparent 32%),
+                radial-gradient(circle at 90% 8%, rgba(184,135,0,0.14), transparent 34%),
+                var(--bg);
+    color: var(--text);
+}
+.app {
+    width: min(980px, 100%);
+    margin: 0 auto;
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.8rem 1.2rem;
+}
+.top {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+    padding: 0.75rem 0; backdrop-filter: blur(10px);
+}
+.title h1 { margin: 0; font-size: 1.15rem; line-height: 1.2; }
+.title p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.78rem; }
+.status {
+    display: flex; align-items: center; gap: 0.35rem;
+    white-space: nowrap; color: var(--muted); font-size: 0.78rem;
+    padding: 0.35rem 0.55rem; border: 1px solid var(--line); border-radius: 999px;
+    background: rgba(255,255,255,0.76);
+}
+.dot { width: 0.55rem; height: 0.55rem; border-radius: 99px; background: var(--red); }
+.dot.ok { background: var(--green); }
+.panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: var(--shadow);
+}
+.meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem;
+    margin-bottom: 0.75rem;
+}
+.meta .item { padding: 0.65rem 0.75rem; }
+.label { color: var(--muted); font-size: 0.72rem; margin-bottom: 0.2rem; }
+.value { font-weight: bold; font-size: 0.95rem; }
+.question { padding: 0.9rem; }
+.empty {
+    min-height: 42vh; display: flex; align-items: center; justify-content: center;
+    text-align: center; color: var(--muted); font-weight: bold; font-size: 1.2rem;
+}
+.stem {
+    font-size: 1.32rem; line-height: 1.55; font-weight: bold;
+    margin-bottom: 0.85rem; word-break: break-word;
+}
+.options { display: grid; grid-template-columns: 1fr; gap: 0.55rem; margin-bottom: 0.85rem; }
+.opt {
+    display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0.5rem; align-items: start;
+    padding: 0.65rem 0.75rem; border: 1px solid var(--line); border-radius: 10px;
+    background: #f8fafc; line-height: 1.45;
+}
+.opt b { color: var(--gold); font-size: 1.05rem; }
+.answer {
+    padding: 0.85rem 0.9rem; border-left: 5px solid var(--green);
+    background: rgba(20,132,67,0.1); border-radius: 10px;
+}
+.answer .content {
+    font-size: 1.55rem; line-height: 1.45; font-weight: bold;
+    word-break: break-word; white-space: pre-wrap;
+}
+.teams {
+    margin-top: 0.75rem; padding: 0.75rem;
+}
+.teams h2 { margin: 0 0 0.55rem; font-size: 0.95rem; }
+.team-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem;
+}
+.team {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    padding: 0.45rem 0.55rem; border: 1px solid var(--line); border-radius: 8px;
+    background: #f8fafc;
+}
+.team span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.team b { color: var(--cyan); font-size: 1.05rem; }
+.small { color: var(--muted); font-size: 0.72rem; margin-top: 0.45rem; text-align: right; }
+
+@media (orientation: landscape) and (min-width: 760px) {
+    .layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr); gap: 0.75rem; align-items: start; }
+    .teams { margin-top: 0; }
+    .team-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .top { align-items: flex-start; }
+    .meta { grid-template-columns: 1fr; }
+    .team-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+    <header class="top">
+        <div class="title">
+            <h1>竞赛答案端</h1>
+        </div>
+        <div class="status"><span id="dot" class="dot"></span><span id="statusText">连接中</span></div>
+    </header>
+
+    <section class="meta">
+        <div class="item panel">
+            <div class="label">当前轮次</div>
+            <div id="roundName" class="value">等待开始</div>
+        </div>
+        <div class="item panel">
+            <div class="label">抽题状态</div>
+            <div id="pickStatus" class="value">暂无题目</div>
+        </div>
+    </section>
+
+    <section class="layout">
+        <div id="questionPanel" class="question panel">
+            <div class="empty">等待主竞赛页抽题</div>
+        </div>
+        <aside class="teams panel">
+            <h2>队伍分数</h2>
+            <div id="teamGrid" class="team-grid"></div>
+            <div id="updatedAt" class="small">尚未同步</div>
+        </aside>
+    </section>
+</main>
+
+<script>
+const API = '/api/state';
+const dot = document.getElementById('dot');
+const statusText = document.getElementById('statusText');
+const roundName = document.getElementById('roundName');
+const pickStatus = document.getElementById('pickStatus');
+const questionPanel = document.getElementById('questionPanel');
+const teamGrid = document.getElementById('teamGrid');
+const updatedAt = document.getElementById('updatedAt');
+let lastQuestion = '', lastTeams = '';
+
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function formatTime(iso) {
+    if (!iso) return '尚未同步';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '尚未同步';
+    return '同步于 ' + d.toLocaleTimeString('zh-CN', {hour12:false});
+}
+
+function renderQuestion(state) {
+    roundName.textContent = state.roundName || '等待开始';
+    pickStatus.textContent = state.hasQuestion && state.question
+        ? `${state.question.type || '题目'} / ${state.question.value || 10}分 / 已抽 ${state.usedCount || 0} 题`
+        : '暂无题目';
+
+    if (!state.hasQuestion || !state.question) {
+        questionPanel.innerHTML = '<div class="empty">等待主竞赛页抽题</div>';
+        return;
+    }
+
+    const q = state.question;
+    let html = `<div class="stem">${esc(q.stem)}</div>`;
+    if (q.options && q.options.length) {
+        html += '<div class="options">';
+        q.options.forEach(opt => {
+            html += `<div class="opt"><b>${esc(opt.key)}.</b><span>${esc(opt.text)}</span></div>`;
+        });
+        html += '</div>';
+    }
+    html += `<div class="answer">
+        <div class="label">正确答案</div>
+        <div class="content">${esc(q.answer || '未填写答案')}</div>
+    </div>`;
+    questionPanel.innerHTML = html;
+}
+
+function renderTeams(teams) {
+    if (!teams || !teams.length) {
+        teamGrid.innerHTML = '<div class="label">暂无队伍</div>';
+        return;
+    }
+    teamGrid.innerHTML = teams.map(t => `
+        <div class="team">
+            <span>${esc(t.id + 1)}. ${esc(t.name)}</span>
+            <b>${esc(t.score)}</b>
+        </div>
+    `).join('');
+}
+
+async function poll() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+        const res = await fetch(API, {cache: 'no-store', signal: controller.signal});
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const state = await res.json();
+        dot.classList.add('ok');
+        statusText.textContent = state.isLive ? '已连接' : '等待主页面';
+        const questionKey = JSON.stringify([state.roundName, state.hasQuestion, state.question, state.usedCount]);
+        const teamsKey = JSON.stringify(state.teams);
+        if (questionKey !== lastQuestion) { renderQuestion(state); lastQuestion = questionKey; }
+        if (teamsKey !== lastTeams) { renderTeams(state.teams); lastTeams = teamsKey; }
+        updatedAt.textContent = formatTime(state.updatedAt);
+    } catch (err) {
+        dot.classList.remove('ok');
+        statusText.textContent = '连接断开';
+        updatedAt.textContent = '请确认服务端仍在运行';
+    } finally {
+        clearTimeout(timeout);
+        setTimeout(poll, 800);
+    }
+}
+
+poll();
+</script>
+</body>
+</html>
